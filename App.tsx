@@ -1,444 +1,420 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Microscope, FlaskConical, Activity, Heart, Dna, ClipboardCheck, ScanSearch, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { FloatingPetals } from './components/FloatingPetals';
 import { Rose } from './components/Rose';
-import { SCENES } from './constants';
-import { Play, RotateCcw, Volume2, VolumeX, Music, Upload } from 'lucide-react';
-import { SceneData } from './types';
+import { Specimen, LabStage } from './types';
 
-const App: React.FC = () => {
-  const [currentSceneIndex, setCurrentSceneIndex] = useState<number>(-1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showFinal, setShowFinal] = useState(false);
-  const [finalPhase, setFinalPhase] = useState(0); // 0: Enter, 1: Face, 2: Change, 3: Amazing, 4: Just way you are
-  const [isMuted, setIsMuted] = useState(false);
-  const [audioError, setAudioError] = useState(false);
-  const [audioFileName, setAudioFileName] = useState<string>('');
-  
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+// --- Data ---
+const SPECIMENS: Specimen[] = [
+  {
+    id: 'yellow',
+    name: 'Yellow Rose',
+    scientificName: 'Rosa amicitia',
+    color: '#facc15',
+    molecule: 'C8H11NO2 (Dopamine)',
+    description: "Bright pigmentation indicates high energy levels.",
+    effect: "Stimulates laughter and reduces stress levels."
+  },
+  {
+    id: 'pink',
+    name: 'Pink Rose',
+    scientificName: 'Rosa gratia',
+    color: '#f472b6',
+    molecule: 'C10H12N2O (Serotonin)',
+    description: "Soft hue suggests a calming, stabilizing property.",
+    effect: "Induces feelings of grace, gratitude, and comfort."
+  },
+  {
+    id: 'red',
+    name: 'Red Rose',
+    scientificName: 'Rosa amoris',
+    color: '#e11d48',
+    molecule: 'C43H66N12O12S2 (Oxytocin)',
+    description: "Intense saturation. Highly reactive.",
+    effect: "Triggers rapid heartbeat and emotional bonding."
+  }
+];
 
-  // Constants for timing
-  const EXIT_ANIMATION_DURATION = 1000; // ms
-  const ENTER_ANIMATION_DURATION = 1500; // ms
+const DIAGNOSES: Record<string, { title: string; colorClass: string; hexColor: string; observation: string; conclusion: string }> = {
+  yellow: {
+    title: "Chronic Joy Syndrome",
+    colorClass: "text-yellow-600",
+    hexColor: "#facc15",
+    observation: "Subject exhibits uncontrollable smiling and high dopamine levels.",
+    conclusion: "Permanently bonded as Best Friends Forever."
+  },
+  pink: {
+    title: "Acute Gratitude Overload",
+    colorClass: "text-pink-500",
+    hexColor: "#f472b6",
+    observation: "Subject radiates warmth, elegance, and serenity.",
+    conclusion: "Presence creates a therapeutic calming effect."
+  },
+  red: {
+    title: "Irreversibly In Love",
+    colorClass: "text-rose-600",
+    hexColor: "#e11d48",
+    observation: "Elevated heart rate and butterflies detected in stomach region.",
+    conclusion: "Life functions are biologically optimized when near you."
+  }
+};
 
-  // Initialize Audio
+// --- Components ---
+
+const BootScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+  const [text, setText] = useState<string[]>([]);
+  const messages = [
+    "Initializing Bio-Lab v1.0...",
+    "Calibrating Microscope Lenses...",
+    "Sterilizing Petri Dishes...",
+    "Detecting Pheromones...",
+    "Subject Identified: 'You'...",
+    "Loading Experiment #1402..."
+  ];
+
   useEffect(() => {
-    // Default to looking for song.mp3
-    audioRef.current = new Audio('/song.mp3'); 
-    audioRef.current.loop = false;
-    
-    // Add error handler
-    const handleError = () => {
-      console.warn("Audio file not found or failed to load");
-      setAudioError(true);
-    };
-    
-    // Add loaded data handler
-    const handleLoaded = () => {
-      setAudioError(false);
-    };
-
-    audioRef.current.addEventListener('error', handleError);
-    audioRef.current.addEventListener('loadeddata', handleLoaded);
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('error', handleError);
-        audioRef.current.removeEventListener('loadeddata', handleLoaded);
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
+    let delay = 0;
+    messages.forEach((msg, index) => {
+      delay += 800;
+      setTimeout(() => {
+        setText(prev => [...prev, msg]);
+        if (index === messages.length - 1) {
+          setTimeout(onComplete, 1000);
+        }
+      }, delay);
+    });
   }, []);
 
-  // Handle Playback State
+  return (
+    <div className="h-full w-full bg-slate-900 text-teal-400 font-mono p-8 flex flex-col justify-center items-start overflow-hidden">
+      <div className="max-w-md w-full mx-auto space-y-3">
+        {text.map((line, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-2 text-sm md:text-base"
+          >
+            <span className="text-teal-600 shrink-0">{">"}</span> 
+            <span className="break-words">{line}</span>
+          </motion.div>
+        ))}
+        <motion.div 
+          animate={{ opacity: [0, 1] }} 
+          transition={{ repeat: Infinity, duration: 0.8 }}
+          className="w-3 h-5 bg-teal-500 inline-block align-middle ml-2"
+        />
+      </div>
+    </div>
+  );
+};
+
+const SpecimenCard: React.FC<{ 
+  specimen: Specimen; 
+  isSelected: boolean; 
+  onClick: () => void; 
+}> = ({ specimen, isSelected, onClick }) => {
+  return (
+    <motion.div
+      layoutId={`card-${specimen.id}`}
+      onClick={onClick}
+      className={`
+        relative cursor-pointer rounded-2xl p-4 transition-all duration-300 border-2 w-full
+        ${isSelected 
+          ? 'bg-white border-lab-accent shadow-xl scale-[1.02] z-10' 
+          : 'bg-white/60 border-transparent hover:bg-white hover:border-lab-border'
+        }
+      `}
+    >
+      <div className="flex flex-row md:flex-col items-center gap-4 md:gap-3">
+        {/* Petri Dish Look */}
+        <div className={`
+          w-20 h-20 md:w-24 md:h-24 rounded-full border-4 flex items-center justify-center bg-lab-bg relative overflow-hidden shrink-0
+          ${isSelected ? 'border-lab-accent' : 'border-slate-200'}
+        `}>
+          <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-transparent to-slate-200 pointer-events-none" />
+          <Rose color={specimen.color} size={isSelected ? 60 : 50} />
+        </div>
+        
+        <div className="text-left md:text-center flex-1">
+          <h3 className="font-sans font-bold text-slate-700 text-lg">{specimen.name}</h3>
+          <p className="font-mono text-[10px] md:text-xs text-slate-400 italic">{specimen.scientificName}</p>
+        </div>
+      </div>
+
+      {isSelected && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mt-4 pt-4 border-t border-slate-100"
+        >
+          <div className="space-y-3 text-xs md:text-sm text-slate-600 font-hand leading-relaxed">
+            <div className="flex items-start gap-2">
+              <FlaskConical size={14} className="mt-1 text-teal-500 shrink-0"/>
+              <span><strong className="text-teal-700">Molecule:</strong> {specimen.molecule}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <ScanSearch size={14} className="mt-1 text-teal-500 shrink-0"/>
+              <span><strong className="text-teal-700">Obs:</strong> {specimen.description}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Activity size={14} className="mt-1 text-teal-500 shrink-0"/>
+              <span><strong className="text-teal-700">Effect:</strong> {specimen.effect}</span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+};
+
+const AnalyzingScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   useEffect(() => {
-    if (audioRef.current && isPlaying) {
-      if (audioRef.current.paused && !audioError) {
-        audioRef.current.play().catch(e => console.log("Playback resume failed:", e));
+    setTimeout(onComplete, 4000);
+  }, []);
+
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-slate-900/95 backdrop-blur-md z-50 fixed inset-0">
+      <div className="w-full max-w-md relative">
+        {/* ECG Animation */}
+        <div className="h-32 w-full bg-slate-800 rounded-lg border border-slate-700 relative overflow-hidden mb-6 flex items-center">
+          <svg className="w-full h-24 stroke-teal-400 fill-none stroke-2" viewBox="0 0 500 100" preserveAspectRatio="none">
+             <path 
+               className="animate-ecg"
+               d="M0,50 L50,50 L60,20 L70,80 L80,50 L120,50 L130,10 L140,90 L150,50 L200,50 L210,30 L220,70 L230,50 L300,50 L310,15 L320,85 L330,50 L400,50 L450,50 L500,50" 
+             />
+          </svg>
+          <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-teal-500 font-mono animate-pulse">
+            <Activity size={12} /> RECORDING
+          </div>
+        </div>
+
+        <div className="space-y-4 text-center">
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            className="text-teal-400 font-mono text-sm"
+          >
+            Analyzing bio-rhythms...
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
+            className="text-teal-300 font-mono text-sm"
+          >
+            Detecting elevated hormone levels...
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.5 }}
+            className="text-pink-400 font-mono text-lg font-bold"
+          >
+            Heart rate abnormality confirmed.
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DiagnosisScreen: React.FC<{ onBack: () => void; specimenId: string }> = ({ onBack, specimenId }) => {
+  const diagnosis = DIAGNOSES[specimenId] || DIAGNOSES.red;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="h-full w-full flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto"
+    >
+      <div className="bg-white/80 backdrop-blur-md p-6 md:p-8 rounded-3xl shadow-2xl border-4 border-pink-100 max-w-md w-full text-center relative my-auto">
+        {/* Decorative Tape */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-6 bg-pink-200/50 rotate-1 transform"></div>
+
+        <motion.div 
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 100, delay: 0.2 }}
+          className="mb-6 flex justify-center"
+        >
+          <Rose color={diagnosis.hexColor} size={140} />
+        </motion.div>
+
+        <h1 className="text-2xl md:text-3xl font-script text-slate-800 mb-2">Diagnosis:</h1>
+        <h2 className={`text-xl md:text-2xl font-bold mb-6 ${diagnosis.colorClass}`}>{diagnosis.title}</h2>
+
+        <div className="text-left bg-lab-bg p-4 rounded-xl border border-lab-border font-hand text-slate-600 space-y-3 mb-8 text-sm md:text-base shadow-inner">
+          <p><strong>Subject:</strong> My Favorite Person</p>
+          <p><strong>Observation:</strong> {diagnosis.observation}</p>
+          <p><strong>Conclusion:</strong> {diagnosis.conclusion}</p>
+        </div>
+
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex justify-center gap-2 text-pink-500">
+            <Heart fill="currentColor" size={24} className="animate-bounce" />
+            <span className="font-script text-2xl">Happy Rose Day</span>
+            <Heart fill="currentColor" size={24} className="animate-bounce delay-75" />
+          </div>
+
+          <button 
+            onClick={onBack}
+            className="flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-xs uppercase tracking-widest font-bold"
+          >
+            <RotateCcw size={14} /> New Experiment
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- Main App ---
+const App: React.FC = () => {
+  const [stage, setStage] = useState<LabStage>('boot');
+  const [selectedSpecimen, setSelectedSpecimen] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Auto-select first specimen on load of lab stage
+  useEffect(() => {
+    if (stage === 'lab') {
+      setTimeout(() => setSelectedSpecimen('yellow'), 500);
+    }
+  }, [stage]);
+
+  // Attempt auto-play on first click
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (audioRef.current && !isPlaying) {
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch((e) => console.log("Auto-play prevented by browser policy", e));
       }
-    } else if (audioRef.current && !isPlaying) {
-      audioRef.current.pause();
-    }
-  }, [isPlaying, audioError]);
+      // Remove listener after first attempt
+      window.removeEventListener('click', handleFirstInteraction);
+    };
 
-  // Handle Mute
-  useEffect(() => {
+    window.addEventListener('click', handleFirstInteraction);
+    return () => window.removeEventListener('click', handleFirstInteraction);
+  }, [isPlaying]);
+
+  const toggleMusic = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering other click handlers
     if (audioRef.current) {
-      audioRef.current.muted = isMuted;
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
     }
-  }, [isMuted]);
-
-  // Sequence Logic
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    if (currentSceneIndex < SCENES.length) {
-      // Calculate total wait time: Scene Duration + Time it takes for previous scene to exit
-      // We add a buffer to ensure the user actually sees the scene for the full 'duration'
-      const baseDuration = currentSceneIndex === -1 ? 100 : SCENES[currentSceneIndex].duration;
-      
-      // If it's the first scene, no exit wait needed. Otherwise, wait for exit animation.
-      const buffer = currentSceneIndex === -1 ? 0 : EXIT_ANIMATION_DURATION;
-      const totalDelay = baseDuration + buffer;
-      
-      const timeout = setTimeout(() => {
-        setCurrentSceneIndex(prev => prev + 1);
-      }, totalDelay); 
-
-      return () => clearTimeout(timeout);
-    } else {
-      // Transition to Final Scene after last rose
-      const finalTimeout = setTimeout(() => {
-        setShowFinal(true);
-        // Start Final Scene Phasing
-        handleFinalSequence();
-      }, 1000);
-      return () => clearTimeout(finalTimeout);
-    }
-  }, [isPlaying, currentSceneIndex]);
-
-  // Final Scene Choreography (Synced to Chorus)
-  const handleFinalSequence = () => {
-    // Phase 0: "When I see your face" (Starts immediately)
-    setFinalPhase(0);
-
-    setTimeout(() => {
-      // Phase 1: "There's not a thing that I would change"
-      setFinalPhase(1);
-    }, 3500);
-
-    setTimeout(() => {
-      // Phase 2: "Cause you're AMAZING" (Climax)
-      setFinalPhase(2);
-    }, 7000);
-
-    setTimeout(() => {
-      // Phase 3: "Just the way you are" (Resolve)
-      setFinalPhase(3);
-    }, 10500);
-  };
-
-  const startSequence = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().then(() => {
-        setAudioError(false);
-      }).catch(e => {
-        console.error("Audio play failed:", e);
-      });
-    }
-
-    setIsPlaying(true);
-    setCurrentSceneIndex(0);
-    setShowFinal(false);
-    setFinalPhase(0);
-  };
-
-  const restart = () => {
-    setIsPlaying(false);
-    setCurrentSceneIndex(-1);
-    setShowFinal(false);
-    setFinalPhase(0);
-    setTimeout(() => startSequence(), 100);
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && audioRef.current) {
-      const url = URL.createObjectURL(file);
-      audioRef.current.src = url;
-      audioRef.current.load();
-      setAudioFileName(file.name);
-      setAudioError(false);
-    }
-  };
-
-  const currentScene = SCENES[currentSceneIndex];
-
-  // --- Dynamic Animation Variants ---
-  const getAnimationVariant = (type: string): Variants => {
-    // Base duration for all enter animations
-    const DURATION = ENTER_ANIMATION_DURATION / 1000; 
-
-    switch (type) {
-      case 'sway':
-        return {
-          initial: { opacity: 0, rotate: -5, scale: 0.9 },
-          animate: { 
-            opacity: 1, 
-            rotate: [5, -5, 5], 
-            scale: 1,
-            transition: { duration: 4, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }
-          },
-          exit: { opacity: 0, rotate: 0, scale: 0.9, transition: { duration: EXIT_ANIMATION_DURATION / 1000 } }
-        };
-      case 'bloom':
-        return {
-          initial: { opacity: 0, scale: 0.4 },
-          animate: { 
-            opacity: 1, 
-            scale: 1,
-            transition: { duration: DURATION, ease: "easeOut" }
-          },
-          exit: { opacity: 0, scale: 1.1, filter: "blur(10px)", transition: { duration: EXIT_ANIMATION_DURATION / 1000 } }
-        };
-      case 'pulse':
-        return {
-          initial: { opacity: 0, scale: 0.9 },
-          animate: { 
-            opacity: 1, 
-            scale: [1, 1.05, 1],
-            filter: ["brightness(1)", "brightness(1.1)", "brightness(1)"],
-            transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
-          },
-          exit: { opacity: 0, scale: 0.95, transition: { duration: EXIT_ANIMATION_DURATION / 1000 } }
-        };
-      case 'gentle_spin':
-        return {
-          initial: { opacity: 0, rotate: -30, scale: 0.8 },
-          animate: { 
-            opacity: 1, 
-            rotate: 0,
-            scale: 1,
-            transition: { duration: DURATION, ease: "circOut" }
-          },
-          exit: { opacity: 0, rotate: 10, scale: 0.9, transition: { duration: EXIT_ANIMATION_DURATION / 1000 } }
-        };
-      case 'float':
-      default:
-        return {
-          initial: { opacity: 0, y: 30, scale: 0.95 },
-          animate: { 
-            opacity: 1, 
-            y: [0, -10, 0], 
-            scale: 1,
-            transition: { 
-              y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-              opacity: { duration: 1 }
-            }
-          },
-          exit: { opacity: 0, y: -20, scale: 0.95, transition: { duration: EXIT_ANIMATION_DURATION / 1000 } }
-        };
-    }
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMuted(!isMuted);
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#fdfaf5] flex items-center justify-center overflow-hidden font-serif">
+    <div className="relative h-[100dvh] w-full bg-lab-bg overflow-hidden font-sans text-lab-text">
+      {/* Background Audio */}
+      <audio ref={audioRef} loop src="background.mp3" />
+      
+      {/* Music Toggle */}
+      <button 
+        onClick={toggleMusic}
+        className="fixed top-4 right-4 z-50 bg-white/50 backdrop-blur p-2 rounded-full shadow-md text-teal-600 hover:bg-white transition-all"
+      >
+        {isPlaying ? <Volume2 size={20} /> : <VolumeX size={20} />}
+      </button>
+
       <FloatingPetals />
+      
+      {/* Background Decor */}
+      <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-teal-100/50 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-pink-100/50 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Hidden File Input */}
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        accept="audio/*"
-        className="hidden"
-      />
-
-      {/* Audio Control (Top Right) */}
-      {isPlaying && (
-        <button 
-          onClick={toggleMute}
-          className="absolute top-6 right-6 z-50 text-stone-400 hover:text-stone-600 transition-colors p-2"
-        >
-          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-        </button>
-      )}
-
-      {/* Intro Screen */}
-      {!isPlaying && !showFinal && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.5 }}
-          className="z-10 text-center p-8 w-full max-w-md flex flex-col items-center"
-        >
-          <div className="mb-12 relative opacity-60">
-             <Rose color="#e11d48" size={80} />
-          </div>
-
-          <p className="text-xl text-stone-500 italic mb-4 font-serif tracking-widest">
-            For Prachi
-          </p>
-          
-          {/* Audio Status / Selector */}
-          <div className="mb-8 flex flex-col items-center gap-2">
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 text-xs transition-colors"
-            >
-              <Music size={12} />
-              {audioFileName ? 'Music Selected' : 'Select "Just The Way You Are"'}
-              <Upload size={12} className="ml-1 opacity-50"/>
-            </button>
-            
-            {audioError && !audioFileName && (
-               <span className="text-amber-500 text-[10px] uppercase tracking-wider">
-                 song.mp3 not found. Please select file.
-               </span>
-            )}
-            
-            {!audioError && !audioFileName && (
-              <p className="text-[10px] text-stone-400 font-sans">
-                (Ensure sound is on)
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={startSequence}
-            className="text-stone-400 hover:text-stone-600 transition-colors uppercase text-xs tracking-[0.3em] flex items-center gap-2 border-b border-transparent hover:border-stone-300 pb-1"
-          >
-            Start Sequence <Play size={10} />
-          </button>
-        </motion.div>
-      )}
-
-      {/* Main Sequence */}
       <AnimatePresence mode="wait">
-        {isPlaying && !showFinal && currentScene && (
-          <motion.div
-            key={currentScene.id}
-            className="z-10 flex flex-col items-center justify-center p-8 w-full max-w-lg text-center absolute"
-          >
-            {/* Rose Animation */}
-            <motion.div
-              variants={getAnimationVariant(currentScene.animationType)}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="mb-8"
-            >
-              <Rose 
-                color={currentScene.roseColorHex} 
-                size={220} 
-              />
-            </motion.div>
-
-            {/* Main Message (Hindi) - appears fast */}
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-              className="text-xl md:text-2xl text-stone-600 font-hindi leading-loose mb-12"
-            >
-              {currentScene.message}
-            </motion.p>
-
-            {/* Lyric Subtitle - appears shortly after message */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="absolute bottom-[-100px] left-0 right-0 px-4"
-            >
-              <p className="text-sm md:text-base text-stone-400 font-serif italic tracking-wide">
-                ♫ "{currentScene.lyric}"
-              </p>
-            </motion.div>
+        {stage === 'boot' && (
+          <motion.div key="boot" exit={{ opacity: 0 }} className="absolute inset-0 z-50">
+            <BootScreen onComplete={() => setStage('lab')} />
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* Final Scene: Climax & Handwritten Note */}
-      {showFinal && (
-        <div className="z-10 relative w-full h-full min-h-screen flex flex-col items-center justify-center p-6">
-          
-          {/* Red Rose with Dynamic Glow */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ 
-              opacity: 1, 
-              scale: finalPhase === 2 ? 1.1 : 1, // Pulse on "Amazing"
-            }}
-            transition={{ duration: 2, ease: "easeOut" }}
-            className="relative mb-12"
+        {stage === 'lab' && (
+          <motion.div 
+            key="lab"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, filter: 'blur(10px)' }}
+            className="absolute inset-0 flex flex-col z-10"
           >
-            {/* Diffused Backlight - Intensifies on 'Amazing' */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: finalPhase >= 2 ? 0.8 : 0.4 }}
-              transition={{ duration: 2 }}
-              className="absolute inset-0 bg-red-200/50 blur-[60px] rounded-full transform scale-150"
-            />
-            
-            <Rose color="#be123c" size={240} className="relative z-10 drop-shadow-lg" />
-          </motion.div>
-
-          {/* Dynamic Lyrics Overlay */}
-          <div className="h-16 mb-8 flex items-center justify-center w-full">
-            <AnimatePresence mode="wait">
-              {finalPhase === 0 && (
-                <motion.p key="p1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-stone-500 font-serif text-lg italic">
-                  When I see your face...
-                </motion.p>
-              )}
-              {finalPhase === 1 && (
-                <motion.p key="p2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-stone-500 font-serif text-lg italic">
-                  There's not a thing that I would change...
-                </motion.p>
-              )}
-              {finalPhase === 2 && (
-                <motion.p 
-                  key="p3" 
-                  initial={{ opacity: 0, scale: 0.9 }} 
-                  animate={{ opacity: 1, scale: 1.2 }} 
-                  exit={{ opacity: 0 }} 
-                  className="text-rose-600 font-serif text-2xl md:text-3xl italic font-medium"
-                >
-                  'Cause you're amazing
-                </motion.p>
-              )}
-              {finalPhase >= 3 && (
-                <motion.p key="p4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-stone-500 font-serif text-lg italic">
-                  Just the way you are.
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Handwritten Note (Appears at the end) */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: finalPhase >= 3 ? 1 : 0, y: finalPhase >= 3 ? 0 : 20 }}
-            transition={{ duration: 2 }}
-            className="relative max-w-sm w-full mt-4"
-          >
-            <div className="bg-[#fffdf5] p-8 pb-12 shadow-lg torn-edge transform rotate-1">
-              <h1 className="text-4xl font-script text-stone-700 mb-4 text-center transform -rotate-2">
-                Happy Rose Day
-              </h1>
-              <p className="text-center font-script text-stone-500 text-lg leading-relaxed">
-                Simple, pure, and forever yours.
-              </p>
+            {/* Header Area */}
+            <div className="pt-6 pb-2 px-6 flex-none">
+                <div className="w-full max-w-4xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-full shadow-sm border border-lab-border">
+                        <Microscope size={24} className="text-lab-accent" />
+                        </div>
+                        <div>
+                        <h1 className="font-bold text-slate-700 text-lg md:text-xl leading-tight">Biology Lab</h1>
+                        <p className="text-[10px] md:text-xs font-mono text-slate-400">Exp. #1402: The "You" Effect</p>
+                        </div>
+                    </div>
+                    <div className="hidden md:flex items-center gap-2 text-xs font-mono text-slate-400 bg-white/50 px-3 py-1 rounded-full">
+                        <Dna size={14} /> Stable Environment
+                    </div>
+                </div>
             </div>
-            
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-6 pb-32 pt-4">
+                <div className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {SPECIMENS.map((specimen) => (
+                        <SpecimenCard 
+                        key={specimen.id}
+                        specimen={specimen}
+                        isSelected={selectedSpecimen === specimen.id}
+                        onClick={() => setSelectedSpecimen(specimen.id)}
+                        />
+                    ))}
+                    
+                    {/* Add extra padding element for mobile scrolling to ensure last item clears the floating button */}
+                    <div className="h-20 md:hidden" />
+                </div>
+            </div>
+
+            {/* Fixed Action Button */}
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1, duration: 1 }}
-              className="absolute -bottom-16 left-0 right-0 flex justify-center"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="absolute bottom-6 left-0 right-0 flex justify-center px-6 z-20 pointer-events-none"
             >
               <button
-                onClick={restart}
-                className="text-stone-300 hover:text-stone-500 transition-colors"
+                onClick={() => setStage('analyzing')}
+                className="
+                  pointer-events-auto
+                  flex items-center gap-3 bg-gradient-to-r from-teal-500 to-emerald-500 
+                  text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-teal-200/50 
+                  hover:scale-105 active:scale-95 transition-all w-full md:w-auto justify-center
+                "
               >
-                <RotateCcw size={16} />
+                <div className="bg-white/20 p-1 rounded">
+                    <ClipboardCheck size={20} />
+                </div>
+                <span>Start Final Test</span>
               </button>
             </motion.div>
           </motion.div>
+        )}
 
-        </div>
-      )}
+        {stage === 'analyzing' && (
+          <motion.div key="analyzing" className="absolute inset-0 z-50">
+            <AnalyzingScreen onComplete={() => setStage('diagnosis')} />
+          </motion.div>
+        )}
+
+        {stage === 'diagnosis' && (
+          <motion.div key="diagnosis" className="absolute inset-0 z-40">
+            <DiagnosisScreen 
+              specimenId={selectedSpecimen || 'red'} 
+              onBack={() => setStage('lab')} 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

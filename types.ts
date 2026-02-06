@@ -1,16 +1,5 @@
 import React from 'react';
 
-export interface SceneData {
-  id: number;
-  color: string;
-  secondaryColor: string;
-  message: string;
-  lyric: string;
-  duration: number;
-  animationType: 'float' | 'sway' | 'bloom' | 'pulse' | 'gentle_spin';
-  roseColorHex: string;
-}
-
 export interface RoseProps {
   color: string;
   size?: number;
@@ -18,4 +7,14 @@ export interface RoseProps {
   style?: React.CSSProperties;
 }
 
-export type SceneState = 'intro' | 'playing' | 'final';
+export type LabStage = 'boot' | 'lab' | 'analyzing' | 'diagnosis';
+
+export interface Specimen {
+  id: string;
+  name: string;
+  scientificName: string;
+  color: string;
+  molecule: string;
+  description: string;
+  effect: string;
+}

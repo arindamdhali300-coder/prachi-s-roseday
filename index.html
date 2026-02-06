@@ -3,23 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>For Prachi</title>
+    <title>RoseDay Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600&family=Noto+Serif+Devanagari:wght@400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600&family=Patrick+Hand&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
+              mono: ['"Fira Code"', 'monospace'],
+              sans: ['"Inter"', 'sans-serif'],
               script: ['"Dancing Script"', 'cursive'],
-              serif: ['"Playfair Display"', 'serif'],
-              hindi: ['"Noto Serif Devanagari"', 'serif'],
+              hand: ['"Patrick Hand"', 'cursive'],
             },
             colors: {
-              paper: '#fdfaf5',
-              ink: '#4b5563',
+              lab: {
+                bg: '#f0fdfa', // Teal 50
+                card: '#ffffff',
+                border: '#ccfbf1', // Teal 100
+                text: '#334155', // Slate 700
+                accent: '#0d9488', // Teal 600
+                pink: '#fce7f3', // Pink 100
+                rose: '#e11d48', // Rose 600
+              }
             }
           }
         }
@@ -32,25 +40,26 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background-color: #fdfaf5; /* Warm paper white */
       }
       #root {
         height: 100%;
         width: 100%;
       }
-      /* Custom Torn Edge Effect */
-      .torn-edge {
-        mask-image: linear-gradient(180deg, black 95%, transparent 100%);
-        /* Simple simulated torn edge using clip-path for browser compatibility */
-        clip-path: polygon(
-          0% 0%, 100% 0%, 100% 100%, 
-          98% 99%, 96% 100%, 94% 99%, 92% 100%, 90% 99%, 88% 100%, 86% 99%, 84% 100%, 82% 99%, 80% 100%,
-          78% 99%, 76% 100%, 74% 99%, 72% 100%, 70% 99%, 68% 100%, 66% 99%, 64% 100%, 62% 99%, 60% 100%,
-          58% 99%, 56% 100%, 54% 99%, 52% 100%, 50% 99%, 48% 100%, 46% 99%, 44% 100%, 42% 99%, 40% 100%,
-          38% 99%, 36% 100%, 34% 99%, 32% 100%, 30% 99%, 28% 100%, 26% 99%, 24% 100%, 22% 99%, 20% 100%,
-          18% 99%, 16% 100%, 14% 99%, 12% 100%, 10% 99%, 8% 100%, 6% 99%, 4% 100%, 2% 99%, 
-          0% 100%
-        );
+      
+      .microscope-mask {
+        mask-image: radial-gradient(circle, black 60%, transparent 100%);
+        -webkit-mask-image: radial-gradient(circle, black 60%, transparent 100%);
+      }
+
+      /* ECG Animation */
+      @keyframes ecg-flow {
+        0% { stroke-dashoffset: 1000; }
+        100% { stroke-dashoffset: 0; }
+      }
+      
+      .animate-ecg {
+        stroke-dasharray: 1000;
+        animation: ecg-flow 3s linear infinite;
       }
     </style>
   <script type="importmap">
